@@ -1,0 +1,130 @@
+stages:
+    - build_test_desktop-libs
+    - build_test_desktop
+    - build_test_shared-libs
+    - build_test_mobile
+    - transfer_build
+    - deploy
+
+########### Build the project desktop-libs
+
+build_desktop-libs:
+    stage: build_test_desktop-libs
+    script:
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/ritm_player
+        - git pull origin monorepo
+        - npm install --legacy-peer-deps
+        # desktop libs
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/ritm_player/projects/desktop-libs
+        - ng build desktop-libs
+        - echo "building desktop-libs"
+        # desktop
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/ritm_player/projects/desktop
+        - npm run build:desktop:ssr-prod-optimized
+        - echo "building desktop"
+    tags:
+        - "TestDeployServer"
+    only:
+        - monorepo
+    only:
+      changes:
+        - "projects/desktop-libs/**/*"
+        
+########### Build the project desktop
+
+build_desktop:
+    stage: build_test_desktop
+    script:
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/ritm_player
+        - git pull origin monorepo
+        - npm install --legacy-peer-deps
+        # desktop
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/ritm_player/projects/desktop
+        - npm run build:desktop:ssr-prod-optimized
+        - echo "building desktop"
+    tags:
+        - "TestDeployServer"
+    only:
+        - monorepo
+    only:
+      changes:
+        - "projects/desktop/**/*"
+        
+########### Build the project shared-libs
+
+build_shared-libs:
+    stage: build_test_shared-libs
+    script:
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/ritm_player
+        - git pull origin monorepo
+        - npm install --legacy-peer-deps
+        # shared-libs
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/ritm_player/projects/shared-libs
+        - ng build shared-libs
+        - echo "building shared-libs"
+        # mobile
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/ritm_player/projects/mobile
+        - npm run build:mobile:ssr-prod-optimized
+        - echo "building mobile"
+        # desktop
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/ritm_player/projects/desktop
+        - npm run build:desktop:ssr-prod-optimized
+        - echo "building desktop"
+    tags:
+        - "TestDeployServer"
+    only:
+        - monorepo
+    only:
+      changes:
+        - "projects/shared-libs/**/*"
+        
+########### Build the project mobile
+
+build_mobile:
+    stage: build_test_mobile
+    script:
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/ritm_player
+        - git pull origin monorepo
+        - npm install --legacy-peer-deps
+        # mobile
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/ritm_player/projects/mobile
+        - npm run build:mobile:ssr-prod-optimized
+        - echo "building mobile"
+    tags:
+        - "TestDeployServer"
+    only:
+        - monorepo
+    only:
+      changes:
+        - "projects/mobile/**/*"
+        
+######## Build Transfer phase
+
+transfer:
+    stage: transfer_build
+    script:
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/test_ritm
+        - ansible-playbook copy_build.yml --extra-vars service=desktop
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/test_ritm
+        - ansible-playbook copy_build.yml --extra-vars service=mobile
+    tags:
+        - "TestDeployServer"
+    only:
+       - monorepo
+
+######### deploy
+          
+deploy:
+    stage: deploy
+    script:
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/test_ritm
+        - ansible-playbook update_content.yml --extra-vars service=desktop
+        - cd /home/gitlab-runner/pishvaz_web_next_gen/test_ritm
+        - ansible-playbook update_content.yml --extra-vars service=mobile
+    tags:
+        - "TestDeployServer"
+    only:
+      - monorepo
+
+
+        
